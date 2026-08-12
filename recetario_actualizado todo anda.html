@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recetario Holon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        .glass { background: rgba(255,255,255,.82); backdrop-filter: blur(12px); }
+        .dark .glass { background: rgba(15,23,42,.85); backdrop-filter: blur(12px); }
+        .recipe-card { transition: transform .2s, box-shadow .2s; }
+        .recipe-card:hover { transform: translateY(-3px); box-shadow: 0 14px 35px rgba(15,23,42,.10); }
+        .dark .recipe-card:hover { box-shadow: 0 14px 35px rgba(0,0,0,.35); }
+        .modal-backdrop { animation: fadeIn .18s ease-out; }
+        .modal-box { animation: popIn .18s ease-out; }
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes popIn { from { opacity:0; transform:scale(.96) translateY(5px) } to { opacity:1; transform:scale(1) translateY(0) } }
+        .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    </style>
+</head>
+
+<body class="min-h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+<header class="sticky top-0 z-40 glass border-b border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-3 justify-between items-center">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <div class="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow">
+                <i class="fa-solid fa-utensils"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg">Recetario Holon</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Tus recetas, comunidad y foro</p>
+            </div>
+        </div>
+
+        <nav class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <button onclick="cambiarVista('listado')" id="nav-listado"
+                class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 transition shrink-0">
+                <i class="fa-solid fa-book-open mr-1"></i> Mis Recetas
+            </button>
+            <a href="https://foto-recetario.web.app" target="_blank" rel="noopener noreferrer" id="nav-mi-foro"
+                class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0 flex items-center">
+                <i class="fa-solid fa-comments mr-1"></i> Mi Foro
+            </a>
+            <button onclick="abrirFormularioNuevo()" id="nav-crear"
+                class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0">
+                <i class="fa-solid fa-plus mr-1"></i> Nueva receta
+            </button>
+        </nav>
+
+        <div class="w-full md:w-auto flex items-center justify-center md:justify-end gap-2">
+            <button onclick="alternarModoOscuro()" id="btn-dark-mode"
+                class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" title="Cambiar tema">
+                <i class="fa-solid fa-moon" id="icono-dark"></i>
+            </button>
+
+            <div id="contenedor-auth">
+                <button onclick="iniciarVinculacionGoogle()" id="btn-login-google"
+                    class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium px-4 py-2 rounded-xl text-sm shadow-sm transition flex items-center gap-2">
+                    <i class="fa-brands fa-google text-red-500"></i>
+                    <span>Vincular cuenta de Google</span>
+                </button>
+
+                <div id="info-usuario" class="hidden items-center gap-3 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <button onclick="abrirModalAvatarDesdeperfil()" class="relative group" title="Editar avatar">
+                        <img id="user-avatar" src="" alt="Avatar" class="w-9 h-9 rounded-full border-2 border-blue-400 object-cover bg-slate-100 dark:bg-slate-800">
+                        <span class="absolute inset-0 rounded-full bg-black/35 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs transition">
+                            <i class="fa-solid fa-pen"></i>
+                        </span>
+                    </button>
+                    <div class="text-xs min-w-0">
+                        <p id="user-nombre" class="font-semibold truncate max-w-32"></p>
+                        <p id="user-email" class="text-slate-500 dark:text-slate-400 truncate max-w-40"></p>
+                    </div>
+                    <button onclick="confirmarEliminarCuenta()" class="text-slate-400 hover:text-red-500 transition px-1" title="Desvincular cuenta">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-7">
+
+    <section id="vista-listado" class="space-y-6">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-3xl p-6 md:p-8 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between gap-5 items-start md:items-center">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium mb-1">RECETARIO PERSONAL</p>
+                    <h2 class="text-3xl md:text-4xl font-bold">Tus recetas guardadas</h2>
+                    <p class="text-blue-100 mt-2 text-sm">Creá, modificá y consultá tus platos favoritos.</p>
+                </div>
+                <button onclick="abrirFormularioNuevo()"
+                    class="bg-white text-blue-700 hover:bg-blue-50 px-5 py-3 rounded-xl font-semibold shadow transition">
+                    <i class="fa-solid fa-plus mr-2"></i>Agregar receta
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="md:col-span-2 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input id="input-busqueda" type="search" oninput="renderizarListado()"
+                        placeholder="Buscar por nombre o ingrediente..."
+                        class="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="select-orden" onchange="renderizarListado()"
+                        class="border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-xs">
+                        <option value="az">Orden: A → Z</option>
+                        <option value="za">Orden: Z → A</option>
+                        <option value="nuevas">Más nuevas</option>
+                        <option value="viejas">Más antiguas</option>
+                        <option value="favoritas">Favoritas primero</option>
+                    </select>
+                    <select id="select-filtro-tiempo" onchange="renderizarListado()"
+                        class="border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-xs">
+                        <option value="todos">Cualquier tiempo</option>
+                        <option value="30">< 30 mins (Rápidas)</option>
+                        <option value="60">< 60 mins</option>
+                        <option value="mas60">Más de 60 mins</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="filtros-categorias" class="flex items-center gap-2 overflow-x-auto pb-1">
+                <button onclick="filtrarPorCategoriaRapida('Todas')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shrink-0 transition">Todas</button>
+                <button onclick="filtrarPorCategoriaRapida('Entradas')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Entradas</button>
+                <button onclick="filtrarPorCategoriaRapida('Platos principales')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Platos principales</button>
+                <button onclick="filtrarPorCategoriaRapida('Pastas')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Pastas</button>
+                <button onclick="filtrarPorCategoriaRapida('Postres')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Postres</button>
+                <button onclick="filtrarPorCategoriaRapida('Bebidas')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Bebidas</button>
+                <button onclick="filtrarPorCategoriaRapida('Panificados')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Panificados</button>
+                <button onclick="filtrarPorCategoriaRapida('Otros')" class="categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Otros</button>
+            </div>
+
+            <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span id="contador-recetas">0 recetas</span>
+                <button onclick="limpiarBusqueda()" class="hover:text-blue-600 dark:hover:text-blue-400">Limpiar búsqueda y filtros</button>
+            </div>
+        </div>
+
+        <div id="contenedor-recetas" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+    </section>
+
+    <section id="vista-comunidad" class="hidden space-y-6">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-3xl p-6 md:p-8 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between gap-5 items-start md:items-center">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium mb-1">COMUNIDAD HOLON</p>
+                    <h2 class="text-3xl md:text-4xl font-bold">Recetas de otros usuarios</h2>
+                    <p class="text-blue-100 mt-2 text-sm">Explorá, marcá favoritas y copiá creaciones de la comunidad.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="md:col-span-2 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input id="input-busqueda-comunidad" type="search" oninput="renderizarComunidad()"
+                        placeholder="Buscar en recetas de la comunidad..."
+                        class="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <select id="select-orden-comunidad" onchange="renderizarComunidad()"
+                    class="border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="az">Ordenar: A → Z</option>
+                    <option value="za">Ordenar: Z → A</option>
+                    <option value="nuevas">Más nuevas</option>
+                    <option value="favoritas">Favoritas primero</option>
+                </select>
+            </div>
+            <div class="mt-3 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span id="contador-recetas-comunidad">0 recetas comunitarias</span>
+                <button onclick="limpiarBusquedaComunidad()" class="hover:text-blue-600 dark:hover:text-blue-400">Limpiar búsqueda</button>
+            </div>
+        </div>
+
+        <div id="contenedor-comunidad" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+    </section>
+
+    <section id="vista-foro" class="hidden space-y-6">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-3xl p-6 md:p-8 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between gap-5 items-start md:items-center">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium mb-1">FORO DE COCINA</p>
+                    <h2 class="text-3xl md:text-4xl font-bold">Comunidad y debates</h2>
+                    <p class="text-blue-100 mt-2 text-sm">Comparte tips, pregunta dudas y conversa con otros cocineros.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-3">
+            <h3 class="font-bold text-lg"><i class="fa-solid fa-pen-to-square text-blue-600 mr-2"></i>Iniciar un debate o consulta</h3>
+            <form onsubmit="crearPostForo(event)" class="space-y-3">
+                <input type="text" id="foro-titulo" placeholder="Título del tema (Ej: ¿Cuál es el mejor queso para pizzas?)" required
+                    class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <textarea id="foro-contenido" rows="3" placeholder="Escribe tu consulta o comparte tu consejo culinario..." required
+                    class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition">
+                        Publicar en el Foro
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="contenedor-posts-foro" class="space-y-5"></div>
+    </section>
+
+    <section id="vista-formulario" class="hidden bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 p-5 flex items-center justify-between gap-3">
+            <div>
+                <p class="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wide">Editor</p>
+                <h2 id="form-titulo-accion" class="text-2xl font-bold">Registrar nueva receta</h2>
+            </div>
+            <button onclick="cambiarVista('listado')" class="px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 rounded-lg">
+                <i class="fa-solid fa-arrow-left mr-1"></i>Volver
+            </button>
+        </div>
+
+        <form id="form-receta" onsubmit="guardarReceta(event)" class="p-5 md:p-8 space-y-6">
+            <input type="hidden" id="receta-id">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Título</label>
+                    <input type="text" id="input-titulo" maxlength="80"
+                        class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        placeholder="Ej: Arroz con pollo">
+                    <p class="text-xs text-slate-400 mt-1">Máximo 80 caracteres.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Categoría</label>
+                    <select id="input-categoria"
+                        class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="General">General</option>
+                        <option value="Entradas">Entradas</option>
+                        <option value="Platos principales">Platos principales</option>
+                        <option value="Pastas">Pastas</option>
+                        <option value="Postres">Postres</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Panificados">Panificados</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Tiempo estimado (minutos)</label>
+                    <input type="number" id="input-tiempo" min="1" max="1440"
+                        class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ej: 45">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Porciones / Comensales base</label>
+                    <input type="number" id="input-porciones" min="1" max="100"
+                        class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ej: 4">
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-sm font-semibold">Subtítulo</label>
+                    <span id="contador-palabras" class="text-xs text-slate-400">0 / 150 palabras</span>
+                </div>
+                <textarea id="input-subtitulo" rows="3" maxlength="1200" oninput="validarPalabrasSubtitulo()"
+                    class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="Contá brevemente qué tiene de especial esta receta..."></textarea>
+                <div id="acciones-limite-subtitulo" class="hidden mt-2 flex items-center justify-between bg-blue-50 dark:bg-blue-950/50 px-3 py-2 rounded-xl border border-blue-100 dark:border-blue-900 text-xs">
+                    <span class="text-blue-700 dark:text-blue-400 font-medium">Límite de 150 palabras alcanzado.</span>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="habilitarEdicionSubtitulo()" class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg">Editar</button>
+                        <button type="button" onclick="eliminarTextoSubtitulo()" class="bg-red-500 text-white px-3 py-1 rounded-lg">Eliminar todo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold">Ingredientes</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Agregalos uno por uno.</p>
+                    </div>
+                    <span id="contador-ingredientes" class="text-xs bg-white dark:bg-slate-900 border dark:border-slate-700 px-2 py-1 rounded-full">0</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div class="md:col-span-3">
+                        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cantidad numérica</label>
+                        <input type="text" id="input-numero" oninput="validarSoloNumeros(this)"
+                            class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Ej: 2">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Medida</label>
+                        <select id="select-medida" class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-2 py-2.5">
+                            <option value="">Sin medida</option>
+                            <option value="tazas">tazas</option>
+                            <option value="gramos (g)">gramos (g)</option>
+                            <option value="kilogramos (kg)">kilogramos (kg)</option>
+                            <option value="mililitros (ml)">mililitros (ml)</option>
+                            <option value="litros (l)">litros (l)</option>
+                            <option value="cucharadas (cda)">cucharadas (cda)</option>
+                            <option value="cucharaditas (cdta)">cucharaditas (cdta)</option>
+                            <option value="onzas (oz)">onzas (oz)</option>
+                            <option value="libras (lb)">libras (lb)</option>
+                            <option value="pizca">pizca</option>
+                            <option value="unidad(es)">unidad(es)</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-4">
+                        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Ingrediente</label>
+                        <input type="text" id="input-ingrediente-nombre" oninput="validarIngrediente(this)"
+                            class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Ej: Arroz">
+                    </div>
+                    <button type="button" onclick="agregarIngredienteItem()"
+                        class="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition">
+                        <i class="fa-solid fa-plus mr-1"></i>Agregar
+                    </button>
+                </div>
+
+                <ul id="lista-ingredientes-temp" class="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800"></ul>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold mb-1">Pasos a seguir</label>
+                <textarea id="input-pasos" rows="7"
+                    class="w-full border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="1. Prepará los ingredientes...&#10;2. Cociná...&#10;3. Serví..."></textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold mb-1">Foto de la receta</label>
+                <input type="file" id="input-imagen-archivo" accept="image/*"
+                    class="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-blue-50 dark:file:bg-blue-950 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100">
+                <div id="contenedor-preview-imagen" class="hidden mt-3 flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <img id="img-preview" src="" alt="Vista previa" class="w-24 h-20 object-cover rounded-lg">
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">Imagen cargada</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Podés reemplazarla o eliminarla.</p>
+                    </div>
+                    <button type="button" onclick="eliminarImagenTemporal()" class="bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-xs font-semibold">
+                        <i class="fa-solid fa-trash mr-1"></i>Eliminar
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="cambiarVista('listado')" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-submit-form" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">
+                    Registrar receta
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section id="vista-detalle" class="hidden bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
+            <button onclick="volverDesdeDetalle()" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                <i class="fa-solid fa-arrow-left mr-1"></i>Volver
+            </button>
+            <div class="flex gap-2" id="contenedor-botones-detalle">
+                <button id="btn-favorito-detalle" onclick="alternarFavoritoDesdeDetalle()"
+                    class="border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 px-4 py-2 rounded-xl text-sm font-semibold">
+                    <i class="fa-regular fa-star mr-1"></i>Favorita
+                </button>
+                <button id="btn-copiar-comunidad" onclick="copiarRecetaComunidadAPersonal()" class="hidden border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-4 py-2 rounded-xl text-sm font-semibold">
+                    <i class="fa-solid fa-copy mr-1"></i>Copiar a mi recetario
+                </button>
+                <button id="btn-ir-modificar" class="border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-4 py-2 rounded-xl text-sm font-semibold">
+                    <i class="fa-solid fa-pen mr-1"></i>Modificar
+                </button>
+                <button onclick="imprimirReceta()" class="border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-semibold">
+                    <i class="fa-solid fa-print mr-1"></i>Imprimir
+                </button>
+            </div>
+        </div>
+
+        <div class="p-5 md:p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div class="lg:col-span-2 space-y-5">
+                    <div id="detalle-imagen-container" class="w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden flex items-center justify-center">
+                        <i class="fa-solid fa-utensils text-5xl text-slate-300 dark:text-slate-600"></i>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg">Ingredientes</h3>
+                            <button onclick="copiarIngredientes()" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                <i class="fa-regular fa-copy mr-1"></i>Copiar lista
+                            </button>
+                        </div>
+
+                        <div id="calculadora-porciones-box" class="hidden bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300"><i class="fa-solid fa-calculator text-blue-500 mr-1"></i>Comensales:</span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="ajustarPorcionesDetalle(-1)" class="w-7 h-7 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold">-</button>
+                                <span id="span-comensales-actual" class="text-xs font-bold w-5 text-center">4</span>
+                                <button onclick="ajustarPorcionesDetalle(1)" class="w-7 h-7 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold">+</button>
+                            </div>
+                        </div>
+
+                        <ul id="detalle-ingredientes" class="text-sm space-y-2 text-slate-700 dark:text-slate-300"></ul>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <span id="detalle-categoria" class="inline-block text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full">General</span>
+                        <span id="detalle-autor" class="text-xs text-slate-400"></span>
+                    </div>
+                    <h2 id="detalle-titulo" class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Título de la Receta</h2>
+                    
+                    <div id="detalle-meta-info" class="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 my-3">
+                        <span id="detalle-tiempo-wrapper" class="hidden items-center"><i class="fa-regular fa-clock mr-1 text-blue-500"></i><span id="detalle-tiempo-texto"></span></span>
+                        <span id="detalle-porciones-wrapper" class="hidden items-center"><i class="fa-solid fa-user-group mr-1 text-blue-500"></i><span id="detalle-porciones-texto"></span></span>
+                    </div>
+
+                    <p id="detalle-subtitulo" class="text-slate-600 dark:text-slate-300 mt-3 leading-relaxed"></p>
+                    <hr class="border-slate-200 dark:border-slate-800 my-6">
+                    <h3 class="text-xl font-bold mb-3"><i class="fa-solid fa-list-check text-blue-600 mr-2"></i>Pasos</h3>
+                    <div id="detalle-pasos" class="text-slate-700 dark:text-slate-300 whitespace-pre-line leading-7"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="modal-cuenta-google" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-7 shadow-2xl modal-box border border-slate-200 dark:border-slate-800">
+        <div class="text-center">
+            <div class="w-14 h-14 mx-auto bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-4">
+                <i class="fa-brands fa-google text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold">Iniciar sesión con Google</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Conectate para publicar recetas y participar en el foro.</p>
+        </div>
+        <div id="error-cuenta-inexistente" class="hidden mt-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs px-3 py-2 rounded-xl">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i>
+            <span>Error al conectar cuenta.</span>
+        </div>
+        <button type="button" onclick="conectarCuentaGoogleDirecta()"
+            class="w-full mt-5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl shadow-sm">
+            <i class="fa-brands fa-google text-red-500 mr-2"></i>Continuar con Google
+        </button>
+        <button type="button" onclick="cerrarModalCuentaGoogle()" class="w-full mt-2 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            Cancelar
+        </button>
+    </div>
+</div>
+
+<div id="modal-avatar" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-7 shadow-2xl modal-box border border-slate-200 dark:border-slate-800">
+        <div class="text-center">
+            <h3 class="text-xl font-bold">Diseñá tu Avatar</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Personaliza tu aspecto en la comunidad y foro.</p>
+        </div>
+        <div class="flex justify-center my-5">
+            <div class="w-28 h-28 bg-blue-50 dark:bg-blue-950 rounded-full border-4 border-blue-200 dark:border-blue-800 overflow-hidden shadow-inner">
+                <img id="preview-avatar-modal" src="" alt="Avatar" class="w-full h-full object-cover">
+            </div>
+        </div>
+        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Semilla / Estilo</label>
+        <div class="flex gap-2">
+            <input type="text" id="input-modal-seed" oninput="actualizarPreviewAvatar()"
+                class="flex-1 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <button type="button" onclick="generarAvatarAleatorio()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 rounded-xl">
+                <i class="fa-solid fa-dice"></i>
+            </button>
+        </div>
+        <div class="flex gap-3 mt-5">
+            <button type="button" id="btn-volver-avatar" onclick="volverModalCuenta()" class="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold py-2.5 rounded-xl">Volver</button>
+            <button type="button" onclick="guardarVinculacionCompleta()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-confirmar-eliminar" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-7 shadow-2xl text-center modal-box border border-slate-200 dark:border-slate-800">
+        <div class="w-14 h-14 mx-auto bg-red-50 dark:bg-red-950 text-red-500 rounded-2xl flex items-center justify-center">
+            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+        <h3 class="text-lg font-bold mt-4">¿Querés desvincular la cuenta?</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Se cerrará tu sesión activa.</p>
+        <div class="flex gap-3 mt-6">
+            <button onclick="cerrarModalEliminarCuenta()" class="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 py-2.5 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="ejecutarEliminarCuenta()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-semibold">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-generico" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-7 shadow-2xl modal-box text-center border border-slate-200 dark:border-slate-800">
+        <div id="modal-generico-icon" class="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-circle-info text-xl"></i>
+        </div>
+        <h3 id="modal-generico-titulo" class="text-lg font-bold mt-4">Aviso</h3>
+        <p id="modal-generico-texto" class="text-sm text-slate-500 dark:text-slate-400 mt-1"></p>
+        <div class="flex gap-3 mt-6">
+            <button id="modal-generico-cancelar" onclick="cerrarModalGenerico()" class="hidden flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 py-2.5 rounded-xl font-semibold">Cancelar</button>
+            <button id="modal-generico-aceptar" onclick="resolverModalGenerico(true)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let recetas = JSON.parse(localStorage.getItem('recetas_holon')) || [];
+let ingredientesTemp = [];
+let imagenBase64Temporal = "";
+let usuarioActual = JSON.parse(localStorage.getItem('usuario_holon')) || null;
+let tempNombre = "";
+let tempEmail = "";
+let editandoAvatarDirecto = false;
+let recetaDetalleActual = null;
+let vistaOrigenDetalle = 'listado';
+let callbackModalGenerico = null;
+let categoriaSeleccionadaFiltro = 'Todas';
+let comensalesCalculadoraActual = 4;
+
+// Base de datos predeterminada de la comunidad
+let recetasComunidad = JSON.parse(localStorage.getItem('recetas_comunidad_holon')) || [
+    {
+        id: 9991,
+        titulo: "Tarta de Frutillas Casera",
+        subtitulo: "Una tarta dulce y fresca con crema pastelera y frutillas seleccionadas para compartir en familia.",
+        categoria: "Postres",
+        tiempo: "60",
+        porciones: "8",
+        autor: "Sofía Gómez",
+        avatarAutor: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sofia",
+        ingredientes: [
+            { cantidad: "1", nombre: "Masa sablée" },
+            { cantidad: "300", nombre: "Frutillas frescas (gramos)" },
+            { cantidad: "2", nombre: "Crema pastelera (tazas)" }
+        ],
+        pasos: "1. Preparar la base de masa y cocinarla en blanco.\n2. Rellenar con la crema pastelera fría.\n3. Decorar con las frutillas cortadas por la mitad.",
+        imagen: "",
+        favorita: false
+    },
+    {
+        id: 9992,
+        titulo: "Ñoquis de Papa Caseros",
+        subtitulo: "La receta clásica de la abuela para unos ñoquis súper suaves que se deshacen en la boca.",
+        categoria: "Pastas",
+        tiempo: "90",
+        porciones: "4",
+        autor: "Marcos Pérez",
+        avatarAutor: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marcos",
+        ingredientes: [
+            { cantidad: "1", nombre: "Papas (kilogramos)" },
+            { cantidad: "300", nombre: "Harina 0000 (gramos)" },
+            { cantidad: "1", nombre: "Huevo" },
+            { cantidad: "1", nombre: "Pizca de sal y nuez moscada" }
+        ],
+        pasos: "1. Hervir las papas con piel y hacer un puré.\n2. Agregar la harina, el huevo y condimentos sin amasar demasiado.\n3. Cortar los ñoquis y cocinar en abundante agua hirviendo.",
+        imagen: "",
+        favorita: false
+    }
+];
+
+// Base de datos del Foro corregida y sincronizada
+let postsForo = JSON.parse(localStorage.getItem('foro_posts_holon')) || [
+    {
+        id: 1,
+        autor: "Carlos Cocina",
+        avatarAutor: "https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos",
+        titulo: "¡Consejo para que la carne quede súper tierna!",
+        contenido: "Si van a hacer un guiso o carne al horno, déjenla marinar al menos 30 minutos con un chorrito de vinagre o limón antes de cocinarla. ¡Hace la diferencia!",
+        likes: 5,
+        likedByMe: false,
+        comentarios: [
+            { id: 101, autor: "Mariana Chef", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mariana", texto: "¡Totalmente de acuerdo! También sirve usar jugo de piña.", likes: 2 }
+        ]
+    }
+];
+
+function sincronizarStorageComunidad() {
+    localStorage.setItem('recetas_comunidad_holon', JSON.stringify(recetasComunidad));
+}
+
+function sincronizarStorageForo() {
+    localStorage.setItem('foro_posts_holon', JSON.stringify(postsForo));
+}
+
+/* ---------- MODO OSCURO ---------- */
+function alternarModoOscuro() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme_holon', isDark ? 'dark' : 'light');
+    actualizarIconoDark(isDark);
+}
+
+function actualizarIconoDark(isDark) {
+    const icono = document.getElementById('icono-dark');
+    if (icono) {
+        icono.className = isDark ? "fa-solid fa-sun text-amber-400" : "fa-solid fa-moon text-slate-600";
+    }
+}
+
+/* ---------- UTILIDADES ---------- */
+function escaparHTML(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto ?? '';
+    return div.innerHTML;
+}
+
+function mostrarModal(titulo, texto, confirmar = false, callback = null) {
+    document.getElementById('modal-generico-titulo').innerText = titulo;
+    document.getElementById('modal-generico-texto').innerText = texto;
+    document.getElementById('modal-generico-cancelar').classList.toggle('hidden', !confirmar);
+    callbackModalGenerico = callback;
+    document.getElementById('modal-generico').classList.remove('hidden');
+}
+
+function cerrarModalGenerico() {
+    document.getElementById('modal-generico').classList.add('hidden');
+    callbackModalGenerico = null;
+}
+
+function resolverModalGenerico(valor) {
+    const cb = callbackModalGenerico;
+    cerrarModalGenerico();
+    if (cb) cb(valor);
+}
+
+function confirmarAccion(titulo, texto, callback) {
+    mostrarModal(titulo, texto, true, callback);
+}
+
+function limpiarBusqueda() {
+    document.getElementById('input-busqueda').value = '';
+    document.getElementById('select-filtro-tiempo').value = 'todos';
+    filtrarPorCategoriaRapida('Todas');
+}
+
+function limpiarBusquedaComunidad() {
+    document.getElementById('input-busqueda-comunidad').value = '';
+    renderizarComunidad();
+}
+
+function sincronizarStorage() {
+    try {
+        localStorage.setItem('recetas_holon', JSON.stringify(recetas));
+    } catch (error) {
+        mostrarModal("Almacenamiento lleno", "Probá usando imágenes más livianas.");
+    }
+}
+
+/* ---------- INICIO ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem('theme_holon');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.classList.add('dark');
+        actualizarIconoDark(true);
+    } else {
+        document.documentElement.classList.remove('dark');
+        actualizarIconoDark(false);
+    }
+
+    verificarEstadoAuth();
+    prepararEventos();
+    renderizarListado();
+    renderizarComunidad();
+    renderizarForo();
+    if (!usuarioActual) iniciarVinculacionGoogle();
+});
+
+function prepararEventos() {
+    const inputImg = document.getElementById('input-imagen-archivo');
+    if (inputImg) inputImg.addEventListener('change', cargarImagen);
+}
+
+/* ---------- CUENTA & GOOGLE ---------- */
+function iniciarVinculacionGoogle() {
+    editandoAvatarDirecto = false;
+    document.getElementById('error-cuenta-inexistente').classList.add('hidden');
+    document.getElementById('modal-cuenta-google').classList.remove('hidden');
+}
+
+function cerrarModalCuentaGoogle() {
+    document.getElementById('modal-cuenta-google').classList.add('hidden');
+}
+
+function conectarCuentaGoogleDirecta() {
+    tempNombre = "Cocinero Holon";
+    tempEmail = "usuario@gmail.com";
+    cerrarModalCuentaGoogle();
+    abrirModalAvatar();
+}
+
+function abrirModalAvatar() {
+    document.getElementById('modal-avatar').classList.remove('hidden');
+    const seedActual = usuarioActual ? usuarioActual.nombre : (tempNombre || "Cocinero");
+    document.getElementById('input-modal-seed').value = seedActual;
+    document.getElementById('btn-volver-avatar').classList.toggle('hidden', editandoAvatarDirecto);
+    actualizarPreviewAvatar();
+}
+
+function abrirModalAvatarDesdeperfil() {
+    if (!usuarioActual) return;
+    editandoAvatarDirecto = true;
+    tempNombre = usuarioActual.nombre;
+    tempEmail = usuarioActual.email;
+    abrirModalAvatar();
+}
+
+function volverModalCuenta() {
+    document.getElementById('modal-avatar').classList.add('hidden');
+    iniciarVinculacionGoogle();
+}
+
+function generarAvatarAleatorio() {
+    document.getElementById('input-modal-seed').value = "Chef_" + Math.random().toString(36).substring(2, 8);
+    actualizarPreviewAvatar();
+}
+
+function actualizarPreviewAvatar() {
+    const seed = document.getElementById('input-modal-seed').value.trim() || "default";
+    document.getElementById('preview-avatar-modal').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+function guardarVinculacionCompleta() {
+    const seed = document.getElementById('input-modal-seed').value.trim() || "default";
+    usuarioActual = {
+        nombre: tempNombre || "Cocinero Holon",
+        email: tempEmail || "usuario@gmail.com",
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`
+    };
+    localStorage.setItem('usuario_holon', JSON.stringify(usuarioActual));
+    document.getElementById('modal-avatar').classList.add('hidden');
+    editandoAvatarDirecto = false;
+    verificarEstadoAuth();
+}
+
+function confirmarEliminarCuenta() {
+    document.getElementById('modal-confirmar-eliminar').classList.remove('hidden');
+}
+
+function cerrarModalEliminarCuenta() {
+    document.getElementById('modal-confirmar-eliminar').classList.add('hidden');
+}
+
+function ejecutarEliminarCuenta() {
+    usuarioActual = null;
+    tempNombre = "";
+    tempEmail = "";
+    localStorage.removeItem('usuario_holon');
+    cerrarModalEliminarCuenta();
+    verificarEstadoAuth();
+    iniciarVinculacionGoogle();
+}
+
+function verificarEstadoAuth() {
+    const btnLogin = document.getElementById('btn-login-google');
+    const infoUsuario = document.getElementById('info-usuario');
+    if (usuarioActual) {
+        btnLogin.classList.add('hidden');
+        infoUsuario.classList.remove('hidden');
+        infoUsuario.classList.add('flex');
+        document.getElementById('user-nombre').innerText = usuarioActual.nombre;
+        document.getElementById('user-email').innerText = usuarioActual.email;
+        document.getElementById('user-avatar').src = usuarioActual.avatar;
+    } else {
+        btnLogin.classList.remove('hidden');
+        infoUsuario.classList.add('hidden');
+        infoUsuario.classList.remove('flex');
+    }
+}
+
+/* ---------- VISTAS ---------- */
+function cambiarVista(vista) {
+    document.getElementById('vista-listado').classList.add('hidden');
+    document.getElementById('vista-comunidad').classList.add('hidden');
+    document.getElementById('vista-foro').classList.add('hidden');
+    document.getElementById('vista-formulario').classList.add('hidden');
+    document.getElementById('vista-detalle').classList.add('hidden');
+
+    ['nav-listado', 'nav-crear'].forEach(id => {
+        document.getElementById(id).className = "px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0";
+    });
+
+    if (vista === 'listado') {
+        vistaOrigenDetalle = 'listado';
+        document.getElementById('vista-listado').classList.remove('hidden');
+        document.getElementById('nav-listado').className = "px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 transition shrink-0";
+        renderizarListado();
+    } else if (vista === 'comunidad') {
+        vistaOrigenDetalle = 'comunidad';
+        document.getElementById('vista-comunidad').classList.remove('hidden');
+        document.getElementById('nav-comunidad').className = "px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 transition shrink-0";
+        renderizarComunidad();
+    } else if (vista === 'foro') {
+        document.getElementById('vista-foro').classList.remove('hidden');
+        document.getElementById('nav-foro').className = "px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 transition shrink-0";
+        renderizarForo();
+    } else if (vista === 'crear') {
+        if (!usuarioActual) {
+            iniciarVinculacionGoogle();
+            return;
+        }
+        document.getElementById('vista-formulario').classList.remove('hidden');
+        document.getElementById('nav-crear').className = "px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 transition shrink-0";
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    } else if (vista === 'detalle') {
+        document.getElementById('vista-detalle').classList.remove('hidden');
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+}
+
+function abrirFormularioNuevo() {
+    prepararFormularioCrear();
+    cambiarVista('crear');
+}
+
+/* ---------- VALIDACIONES & FILTROS ---------- */
+function filtrarPorCategoriaRapida(categoria) {
+    categoriaSeleccionadaFiltro = categoria;
+    document.querySelectorAll('.categoria-pill').forEach(btn => {
+        if (btn.innerText.trim() === categoria) {
+            btn.className = "categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shrink-0 transition";
+        } else {
+            btn.className = "categoria-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 transition";
+        }
+    });
+    renderizarListado();
+}
+
+function validarSoloNumeros(input) {
+    let valor = input.value.replace(/[^0-9.]/g, '');
+    const partes = valor.split('.');
+    if (partes.length > 2) valor = partes[0] + '.' + partes.slice(1).join('');
+    input.value = valor;
+}
+
+function validarIngrediente(input) {
+    input.value = input.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '');
+}
+
+function validarPalabrasSubtitulo() {
+    const textarea = document.getElementById('input-subtitulo');
+    const contador = document.getElementById('contador-palabras');
+    const panel = document.getElementById('acciones-limite-subtitulo');
+    let palabras = textarea.value.trim() ? textarea.value.trim().split(/\s+/) : [];
+
+    if (palabras.length > 150) {
+        textarea.value = palabras.slice(0, 150).join(" ");
+        palabras = palabras.slice(0, 150);
+    }
+
+    contador.innerText = `${palabras.length} / 150 palabras`;
+    contador.classList.toggle('text-red-500', palabras.length >= 150);
+    contador.classList.toggle('font-bold', palabras.length >= 150);
+    panel.classList.toggle('hidden', palabras.length < 150);
+    textarea.disabled = palabras.length >= 150;
+}
+
+function habilitarEdicionSubtitulo() {
+    const textarea = document.getElementById('input-subtitulo');
+    textarea.disabled = false;
+    document.getElementById('acciones-limite-subtitulo').classList.add('hidden');
+    textarea.focus();
+}
+
+function eliminarTextoSubtitulo() {
+    const textarea = document.getElementById('input-subtitulo');
+    textarea.disabled = false;
+    textarea.value = '';
+    validarPalabrasSubtitulo();
+    textarea.focus();
+}
+
+/* ---------- MIS RECETAS ---------- */
+function renderizarListado() {
+    const contenedor = document.getElementById('contenedor-recetas');
+    const busqueda = document.getElementById('input-busqueda').value.trim().toLowerCase();
+    const orden = document.getElementById('select-orden').value;
+    const filtroTiempo = document.getElementById('select-filtro-tiempo').value;
+
+    let filtradas = recetas.filter(r => {
+        if (categoriaSeleccionadaFiltro !== 'Todas' && r.categoria !== categoriaSeleccionadaFiltro) return false;
+        const t = parseInt(r.tiempo) || 0;
+        if (filtroTiempo === '30' && (t <= 0 || t >= 30)) return false;
+        if (filtroTiempo === '60' && (t <= 0 || t >= 60)) return false;
+        if (filtroTiempo === 'mas60' && (t <= 60)) return false;
+
+        const texto = [r.titulo, r.subtitulo, r.categoria, ...(r.ingredientes || []).map(i => i.nombre)].join(' ').toLowerCase();
+        return texto.includes(busqueda);
+    });
+
+    filtradas.sort((a,b) => {
+        if (orden === 'za') return b.titulo.localeCompare(a.titulo);
+        if (orden === 'nuevas') return (b.id || 0) - (a.id || 0);
+        if (orden === 'viejas') return (a.id || 0) - (b.id || 0);
+        if (orden === 'favoritas') return Number(b.favorita) - Number(a.favorita) || a.titulo.localeCompare(b.titulo);
+        return a.titulo.localeCompare(b.titulo);
+    });
+
+    document.getElementById('contador-recetas').innerText = `${filtradas.length} ${filtradas.length === 1 ? 'receta' : 'recetas'}`;
+
+    if (filtradas.length === 0) {
+        contenedor.innerHTML = `
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl p-12 text-center">
+                <div class="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-utensils text-2xl"></i>
+                </div>
+                <h3 class="font-bold mt-4">${recetas.length ? 'No encontramos recetas' : 'Todavía no hay recetas'}</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${recetas.length ? 'Probá otra búsqueda o filtro.' : 'Creá tu primera receta para empezar.'}</p>
+                ${recetas.length ? '' : '<button onclick="abrirFormularioNuevo()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold">Crear receta</button>'}
+            </div>`;
+        return;
+    }
+
+    contenedor.innerHTML = filtradas.map(receta => {
+        const img = receta.imagen
+            ? `<img src="${escaparHTML(receta.imagen)}" alt="${escaparHTML(receta.titulo)}" class="w-full h-48 object-cover">`
+            : `<div class="w-full h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center text-slate-300 dark:text-slate-700"><i class="fa-solid fa-utensils text-4xl"></i></div>`;
+
+        const ingredientes = (receta.ingredientes || []).slice(0,3).map(i => escaparHTML(i.nombre)).join(', ');
+
+        return `
+        <article class="recipe-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div class="relative">
+                ${img}
+                <button onclick="alternarFavorito(${receta.id})"
+                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition ${receta.favorita ? 'text-amber-500' : 'text-slate-400'}"
+                    title="${receta.favorita ? 'Quitar de favoritas' : 'Agregar a favoritas'}">
+                    <i class="fa-${receta.favorita ? 'solid' : 'regular'} fa-star"></i>
+                </button>
+                <span class="absolute bottom-3 left-3 bg-slate-900/75 text-white text-xs px-2.5 py-1 rounded-full">
+                    ${escaparHTML(receta.categoria || 'General')}
+                </span>
+            </div>
+            <div class="p-5">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">${escaparHTML(receta.titulo)}</h3>
+                <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 my-2">
+                    ${receta.tiempo ? `<span><i class="fa-regular fa-clock mr-1 text-blue-500"></i>${receta.tiempo} mins</span>` : ''}
+                    ${receta.porciones ? `<span><i class="fa-solid fa-user-group mr-1 text-blue-500"></i>${receta.porciones} porciones</span>` : ''}
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${escaparHTML(receta.subtitulo || '')}</p>
+                <p class="text-xs text-slate-400 mt-3"><i class="fa-solid fa-carrot mr-1"></i>${ingredientes || 'Sin ingredientes'}</p>
+                <div class="flex items-center gap-2 mt-5">
+                    <button onclick="consultarReceta(${receta.id}, 'listado')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold transition">
+                        <i class="fa-solid fa-eye mr-1"></i>Consultar
+                    </button>
+                    <button onclick="prepararModificacion(${receta.id})" class="w-11 h-11 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300" title="Modificar">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button onclick="eliminarReceta(${receta.id})" class="w-11 h-11 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-red-500" title="Eliminar">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </article>`;
+    }).join('');
+}
+
+/* ---------- COMUNIDAD ---------- */
+function renderizarComunidad() {
+    const contenedor = document.getElementById('contenedor-comunidad');
+    const busqueda = document.getElementById('input-busqueda-comunidad').value.trim().toLowerCase();
+    const orden = document.getElementById('select-orden-comunidad').value;
+
+    let filtradas = recetasComunidad.filter(r => {
+        const texto = [r.titulo, r.subtitulo, r.categoria, r.autor, ...(r.ingredientes || []).map(i => i.nombre)].join(' ').toLowerCase();
+        return texto.includes(busqueda);
+    });
+
+    filtradas.sort((a,b) => {
+        if (orden === 'za') return b.titulo.localeCompare(a.titulo);
+        if (orden === 'nuevas') return (b.id || 0) - (a.id || 0);
+        if (orden === 'favoritas') return Number(b.favorita) - Number(a.favorita) || a.titulo.localeCompare(b.titulo);
+        return a.titulo.localeCompare(b.titulo);
+    });
+
+    document.getElementById('contador-recetas-comunidad').innerText = `${filtradas.length} ${filtradas.length === 1 ? 'receta comunitaria' : 'recetas comunitarias'}`;
+
+    if (filtradas.length === 0) {
+        contenedor.innerHTML = `
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl p-12 text-center">
+                <div class="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-earth-americas text-2xl"></i>
+                </div>
+                <h3 class="font-bold mt-4">No encontramos recetas en la comunidad</h3>
+            </div>`;
+        return;
+    }
+
+    contenedor.innerHTML = filtradas.map(receta => {
+        const img = receta.imagen
+            ? `<img src="${escaparHTML(receta.imagen)}" alt="${escaparHTML(receta.titulo)}" class="w-full h-48 object-cover">`
+            : `<div class="w-full h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center text-slate-300 dark:text-slate-700"><i class="fa-solid fa-utensils text-4xl"></i></div>`;
+
+        const ingredientes = (receta.ingredientes || []).slice(0,3).map(i => escaparHTML(i.nombre)).join(', ');
+
+        return `
+        <article class="recipe-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div class="relative">
+                ${img}
+                <button onclick="alternarFavoritoComunidad(${receta.id})"
+                    class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition ${receta.favorita ? 'text-amber-500' : 'text-slate-400'}"
+                    title="${receta.favorita ? 'Quitar de favoritas' : 'Agregar a favoritas'}">
+                    <i class="fa-${receta.favorita ? 'solid' : 'regular'} fa-star"></i>
+                </button>
+                <span class="absolute bottom-3 left-3 bg-slate-900/75 text-white text-xs px-2.5 py-1 rounded-full">
+                    ${escaparHTML(receta.categoria || 'General')}
+                </span>
+            </div>
+            <div class="p-5">
+                <div class="flex items-center gap-2 mb-2">
+                    <img src="${escaparHTML(receta.avatarAutor)}" alt="Avatar" class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border dark:border-slate-700 object-cover">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Por ${escaparHTML(receta.autor)}</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">${escaparHTML(receta.titulo)}</h3>
+                <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 my-2">
+                    ${receta.tiempo ? `<span><i class="fa-regular fa-clock mr-1 text-blue-500"></i>${receta.tiempo} mins</span>` : ''}
+                    ${receta.porciones ? `<span><i class="fa-solid fa-user-group mr-1 text-blue-500"></i>${receta.porciones} porciones</span>` : ''}
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${escaparHTML(receta.subtitulo || '')}</p>
+                <p class="text-xs text-slate-400 mt-3"><i class="fa-solid fa-carrot mr-1"></i>${ingredientes || 'Sin ingredientes'}</p>
+                <div class="flex items-center gap-2 mt-5">
+                    <button onclick="consultarReceta(${receta.id}, 'comunidad')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold transition">
+                        <i class="fa-solid fa-eye mr-1"></i>Consultar
+                    </button>
+                    <button onclick="copiarRecetaComunidadDirecta(${receta.id})" class="border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-3 py-2.5 rounded-xl text-sm font-semibold" title="Copiar a mi recetario">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </article>`;
+    }).join('');
+}
+
+function alternarFavoritoComunidad(id) {
+    const receta = recetasComunidad.find(r => r.id == id);
+    if (!receta) return;
+    receta.favorita = !receta.favorita;
+    sincronizarStorageComunidad();
+    renderizarComunidad();
+    if (recetaDetalleActual && recetaDetalleActual.id == id) {
+        recetaDetalleActual = receta;
+        actualizarBotonFavoritoDetalle();
+    }
+}
+
+function copiarRecetaComunidadAPersonal() {
+    if (!recetaDetalleActual || vistaOrigenDetalle !== 'comunidad') return;
+    const yaExiste = recetas.some(r => r.titulo.toLowerCase() === recetaDetalleActual.titulo.toLowerCase());
+    if (yaExiste) {
+        mostrarModal("Ya la tenés", "Esta receta ya se encuentra en tu recetario personal.");
+        return;
+    }
+    recetas.push({
+        id: Date.now(),
+        titulo: recetaDetalleActual.titulo + " (Copia)",
+        subtitulo: recetaDetalleActual.subtitulo,
+        categoria: recetaDetalleActual.categoria,
+        tiempo: recetaDetalleActual.tiempo,
+        porciones: recetaDetalleActual.porciones,
+        ingredientes: JSON.parse(JSON.stringify(recetaDetalleActual.ingredientes)),
+        pasos: recetaDetalleActual.pasos,
+        imagen: recetaDetalleActual.imagen,
+        favorita: false
+    });
+    sincronizarStorage();
+    mostrarModal("¡Copiada!", "La receta comunitaria se añadió a tu recetario personal correctamente.");
+}
+
+function copiarRecetaComunidadDirecta(id) {
+    const receta = recetasComunidad.find(r => r.id == id);
+    if (!receta) return;
+    const yaExiste = recetas.some(r => r.titulo.toLowerCase() === receta.titulo.toLowerCase());
+    if (yaExiste) {
+        mostrarModal("Ya la tenés", "Esta receta ya se encuentra en tu recetario personal.");
+        return;
+    }
+    recetas.push({
+        id: Date.now(),
+        titulo: receta.titulo + " (Copia)",
+        subtitulo: receta.subtitulo,
+        categoria: receta.categoria,
+        tiempo: receta.tiempo,
+        porciones: receta.porciones,
+        ingredientes: JSON.parse(JSON.stringify(receta.ingredientes)),
+        pasos: receta.pasos,
+        imagen: receta.imagen,
+        favorita: false
+    });
+    sincronizarStorage();
+    mostrarModal("¡Copiada!", "La receta comunitaria se añadió a tu recetario personal correctamente.");
+}
+
+/* ---------- FORO (TOTALMENTE FUNCIONAL) ---------- */
+function renderizarForo() {
+    const contenedor = document.getElementById('contenedor-posts-foro');
+    if (!postsForo.length) {
+        contenedor.innerHTML = `<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl text-center text-slate-400">No hay publicaciones en el foro todavía. ¡Sé el primero en escribir una!</div>`;
+        return;
+    }
+
+    contenedor.innerHTML = postsForo.map(post => {
+        const esMio = usuarioActual && post.autor === usuarioActual.nombre;
+        return `
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <img src="${escaparHTML(post.avatarAutor)}" alt="Avatar" class="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 object-cover">
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-slate-100">${escaparHTML(post.autor)}</h4>
+                        <span class="text-xs text-slate-400">Publicación en el Foro</span>
+                    </div>
+                </div>
+                ${esMio ? `<button onclick="eliminarPostForo(${post.id})" class="text-slate-400 hover:text-red-500 text-xs px-2 py-1" title="Eliminar post"><i class="fa-solid fa-trash"></i></button>` : ''}
+            </div>
+
+            <div>
+                <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">${escaparHTML(post.titulo)}</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line">${escaparHTML(post.contenido)}</p>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs border-t border-b border-slate-100 dark:border-slate-800 py-2">
+                <button onclick="darLikeForo(${post.id})" class="text-slate-500 hover:text-red-500 font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-heart ${post.likedByMe ? 'text-red-500' : 'text-slate-400'}"></i> ${post.likes} Me gusta
+                </button>
+                <span class="text-slate-400"><i class="fa-regular fa-comment mr-1"></i>${post.comentarios.length} comentarios</span>
+            </div>
+
+            <div class="space-y-3 pl-2 md:pl-4 border-l-2 border-slate-100 dark:border-slate-800">
+                ${post.comentarios.map(c => `
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl text-xs space-y-1">
+                        <div class="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
+                            <span>${escaparHTML(c.autor)}</span>
+                            <button onclick="darLikeComentario(${post.id}, ${c.id})" class="text-slate-400 hover:text-red-500 transition">
+                                <i class="fa-solid fa-heart mr-0.5 ${c.likedByMe ? 'text-red-500' : ''}"></i> ${c.likes || 0}
+                            </button>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-300">${escaparHTML(c.texto)}</p>
+                    </div>
+                `).join('')}
+
+                <form onsubmit="agregarComentarioForo(event, ${post.id})" class="flex gap-2 pt-1">
+                    <input type="text" id="input-comentario-${post.id}" placeholder="Escribe un comentario..." required
+                        class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold">Comentar</button>
+                </form>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function crearPostForo(event) {
+    event.preventDefault();
+    if (!usuarioActual) {
+        iniciarVinculacionGoogle();
+        return;
+    }
+
+    const tituloInput = document.getElementById('foro-titulo');
+    const contenidoInput = document.getElementById('foro-contenido');
+
+    postsForo.unshift({
+        id: Date.now(),
+        autor: usuarioActual.nombre,
+        avatarAutor: usuarioActual.avatar,
+        titulo: tituloInput.value.trim(),
+        contenido: contenidoInput.value.trim(),
+        likes: 0,
+        likedByMe: false,
+        comentarios: []
+    });
+
+    sincronizarStorageForo();
+    tituloInput.value = '';
+    contenidoInput.value = '';
+    renderizarForo();
+}
+
+function darLikeForo(id) {
+    const post = postsForo.find(p => p.id == id);
+    if (!post) return;
+    if (post.likedByMe) {
+        post.likes--;
+        post.likedByMe = false;
+    } else {
+        post.likes++;
+        post.likedByMe = true;
+    }
+    sincronizarStorageForo();
+    renderizarForo();
+}
+
+function eliminarPostForo(id) {
+    postsForo = postsForo.filter(p => p.id != id);
+    sincronizarStorageForo();
+    renderizarForo();
+}
+
+function agregarComentarioForo(event, postId) {
+    event.preventDefault();
+    if (!usuarioActual) {
+        iniciarVinculacionGoogle();
+        return;
+    }
+
+    const input = document.getElementById(`input-comentario-${postId}`);
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    const post = postsForo.find(p => p.id == postId);
+    if (!post) return;
+
+    post.comentarios.push({
+        id: Date.now(),
+        autor: usuarioActual.nombre,
+        avatar: usuarioActual.avatar,
+        texto: texto,
+        likes: 0,
+        likedByMe: false
+    });
+
+    sincronizarStorageForo();
+    renderizarForo();
+}
+
+function darLikeComentario(postId, comentarioId) {
+    const post = postsForo.find(p => p.id == postId);
+    if (!post) return;
+    const comentario = post.comentarios.find(c => c.id == comentarioId);
+    if (!comentario) return;
+
+    if (comentario.likedByMe) {
+        comentario.likes = (comentario.likes || 1) - 1;
+        comentario.likedByMe = false;
+    } else {
+        comentario.likes = (comentario.likes || 0) + 1;
+        comentario.likedByMe = true;
+    }
+    sincronizarStorageForo();
+    renderizarForo();
+}
+
+/* ---------- INGREDIENTES EDITOR ---------- */
+function agregarIngredienteItem() {
+    const numero = document.getElementById('input-numero').value.trim();
+    const medida = document.getElementById('select-medida').value;
+    const nombre = document.getElementById('input-ingrediente-nombre').value.trim();
+
+    if (numero === '' || nombre === '') {
+        mostrarModal("Falta información", "Ingresá cantidad y nombre del ingrediente.");
+        return;
+    }
+
+    ingredientesTemp.push({
+        cantidad: numero,
+        nombre: medida ? `${nombre} (${medida})` : nombre
+    });
+
+    document.getElementById('input-numero').value = '';
+    document.getElementById('select-medida').value = '';
+    document.getElementById('input-ingrediente-nombre').value = '';
+    actualizarListaIngredientesTemp();
+}
+
+function actualizarListaIngredientesTemp() {
+    const lista = document.getElementById('lista-ingredientes-temp');
+    document.getElementById('contador-ingredientes').innerText = ingredientesTemp.length;
+
+    if (!ingredientesTemp.length) {
+        lista.innerHTML = `<li class="p-4 text-slate-400 italic text-center text-sm">No hay ingredientes agregados aún.</li>`;
+        return;
+    }
+
+    lista.innerHTML = ingredientesTemp.map((ing, index) => `
+        <li class="flex justify-between items-center gap-3 p-3">
+            <div class="min-w-0">
+                <strong class="text-blue-600 dark:text-blue-400">${escaparHTML(ing.cantidad)}</strong>
+                <span class="text-slate-500">—</span>
+                <span class="dark:text-slate-200">${escaparHTML(ing.nombre)}</span>
+            </div>
+            <button type="button" onclick="eliminarIngredienteTemp(${index})" class="shrink-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 w-8 h-8 rounded-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </li>
+    `).join('');
+}
+
+function eliminarIngredienteTemp(index) {
+    ingredientesTemp.splice(index, 1);
+    actualizarListaIngredientesTemp();
+}
+
+/* ---------- IMAGEN ---------- */
+function cargarImagen(e) {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    if (!archivo.type.startsWith('image/')) {
+        mostrarModal("Archivo inválido", "Seleccioná una imagen.");
+        e.target.value = '';
+        return;
+    }
+    if (archivo.size > 2 * 1024 * 1024) {
+        mostrarModal("Imagen muy grande", "Elegí una imagen de hasta 2 MB.");
+        e.target.value = '';
+        return;
+    }
+
+    const lector = new FileReader();
+    lector.onload = event => {
+        imagenBase64Temporal = event.target.result;
+        document.getElementById('img-preview').src = imagenBase64Temporal;
+        document.getElementById('contenedor-preview-imagen').classList.remove('hidden');
+    };
+    lector.readAsDataURL(archivo);
+}
+
+function eliminarImagenTemporal() {
+    imagenBase64Temporal = "";
+    document.getElementById('input-imagen-archivo').value = "";
+    document.getElementById('img-preview').src = "";
+    document.getElementById('contenedor-preview-imagen').classList.add('hidden');
+}
+
+/* ---------- CREAR / MODIFICAR RECETA ---------- */
+function prepararFormularioCrear() {
+    document.getElementById('form-titulo-accion').innerText = "Registrar nueva receta";
+    document.getElementById('btn-submit-form').innerText = "Registrar receta";
+    document.getElementById('form-receta').reset();
+    document.getElementById('receta-id').value = '';
+    document.getElementById('input-categoria').value = 'General';
+    document.getElementById('input-subtitulo').disabled = false;
+    document.getElementById('acciones-limite-subtitulo').classList.add('hidden');
+    document.getElementById('contador-palabras').innerText = "0 / 150 palabras";
+    ingredientesTemp = [];
+    eliminarImagenTemporal();
+    actualizarListaIngredientesTemp();
+}
+
+function guardarReceta(event) {
+    event.preventDefault();
+    if (!usuarioActual) {
+        iniciarVinculacionGoogle();
+        return;
+    }
+
+    const id = document.getElementById('receta-id').value;
+    const titulo = document.getElementById('input-titulo').value.trim();
+    const subtitulo = document.getElementById('input-subtitulo').value.trim();
+    const categoria = document.getElementById('input-categoria').value;
+    const tiempo = document.getElementById('input-tiempo').value.trim();
+    const porciones = document.getElementById('input-porciones').value.trim() || "4";
+    const pasos = document.getElementById('input-pasos').value.trim();
+
+    if (!titulo || !subtitulo || !pasos) {
+        mostrarModal("Faltan datos", "Completá los campos obligatorios.");
+        return;
+    }
+
+    if (!ingredientesTemp.length) {
+        mostrarModal("Faltan ingredientes", "Debés agregar al menos un ingrediente.");
+        return;
+    }
+
+    const recetaData = { titulo, subtitulo, categoria, tiempo, porciones, ingredientes: [...ingredientesTemp], pasos, imagen: imagenBase64Temporal };
+
+    if (id) {
+        const index = recetas.findIndex(r => r.id == id);
+        if (index !== -1) recetas[index] = { ...recetas[index], ...recetaData };
+    } else {
+        recetas.push({ id: Date.now(), ...recetaData, favorita: false });
+    }
+
+    sincronizarStorage();
+    mostrarModal("¡Guardada!", "La receta se guardó correctamente.");
+    setTimeout(() => {
+        cerrarModalGenerico();
+        cambiarVista('listado');
+    }, 600);
+}
+
+function prepararModificacion(id) {
+    const receta = recetas.find(r => r.id == id);
+    if (!receta) return;
+
+    cambiarVista('crear');
+    document.getElementById('form-titulo-accion').innerText = "Modificar receta";
+    document.getElementById('btn-submit-form').innerText = "Guardar cambios";
+    document.getElementById('receta-id').value = receta.id;
+    document.getElementById('input-titulo').value = receta.titulo;
+    document.getElementById('input-subtitulo').value = receta.subtitulo || '';
+    document.getElementById('input-categoria').value = receta.categoria || 'General';
+    document.getElementById('input-tiempo').value = receta.tiempo || '';
+    document.getElementById('input-porciones').value = receta.porciones || '';
+    document.getElementById('input-pasos').value = receta.pasos || '';
+    ingredientesTemp = (receta.ingredientes || []).map(i => ({...i}));
+    imagenBase64Temporal = receta.imagen || '';
+
+    actualizarListaIngredientesTemp();
+    validarPalabrasSubtitulo();
+
+    if (imagenBase64Temporal) {
+        document.getElementById('img-preview').src = imagenBase64Temporal;
+        document.getElementById('contenedor-preview-imagen').classList.remove('hidden');
+    } else {
+        eliminarImagenTemporal();
+    }
+}
+
+/* ---------- DETALLE & CALCULADORA ---------- */
+function consultarReceta(id, origen = 'listado') {
+    vistaOrigenDetalle = origen;
+    let receta = origen === 'comunidad' ? recetasComunidad.find(r => r.id == id) : recetas.find(r => r.id == id);
+    if (!receta) return;
+
+    recetaDetalleActual = receta;
+    comensalesCalculadoraActual = parseInt(receta.porciones) || 4;
+
+    document.getElementById('detalle-titulo').innerText = receta.titulo;
+    document.getElementById('detalle-subtitulo').innerText = receta.subtitulo || '';
+    document.getElementById('detalle-categoria').innerText = receta.categoria || 'General';
+    document.getElementById('detalle-pasos').innerText = receta.pasos || '';
+    document.getElementById('span-comensales-actual').innerText = comensalesCalculadoraActual;
+
+    const wrapTiempo = document.getElementById('detalle-tiempo-wrapper');
+    const wrapPorciones = document.getElementById('detalle-porciones-wrapper');
+    const calculadoraBox = document.getElementById('calculadora-porciones-box');
+    const btnCopiarComunidad = document.getElementById('btn-copiar-comunidad');
+    const btnIrModificar = document.getElementById('btn-ir-modificar');
+    const btnFavoritoDetalle = document.getElementById('btn-favorito-detalle');
+
+    if (receta.tiempo) {
+        document.getElementById('detalle-tiempo-texto').innerText = `${receta.tiempo} mins`;
+        wrapTiempo.classList.remove('hidden');
+        wrapTiempo.classList.add('flex');
+    } else {
+        wrapTiempo.classList.add('hidden');
+    }
+
+    if (receta.porciones) {
+        document.getElementById('detalle-porciones-texto').innerText = `${receta.porciones} porciones`;
+        wrapPorciones.classList.remove('hidden');
+        wrapPorciones.classList.add('flex');
+        calculadoraBox.classList.remove('hidden');
+    } else {
+        wrapPorciones.classList.add('hidden');
+        calculadoraBox.classList.add('hidden');
+    }
+
+    document.getElementById('detalle-autor').innerText = origen === 'comunidad' ? `Por ${receta.autor}` : "";
+    btnCopiarComunidad.classList.toggle('hidden', origen !== 'comunidad');
+    if (btnIrModificar) btnIrModificar.classList.toggle('hidden', origen === 'comunidad');
+    if (btnFavoritoDetalle) btnFavoritoDetalle.classList.remove('hidden');
+    actualizarBotonFavoritoDetalle();
+
+    const contenedorImg = document.getElementById('detalle-imagen-container');
+    if (receta.imagen) {
+        contenedorImg.innerHTML = `<img src="${escaparHTML(receta.imagen)}" alt="${escaparHTML(receta.titulo)}" class="w-full h-full object-cover">`;
+    } else {
+        contenedorImg.innerHTML = `<i class="fa-solid fa-utensils text-5xl text-slate-300 dark:text-slate-600"></i>`;
+    }
+
+    renderizarIngredientesDetalle();
+    cambiarVista('detalle');
+}
+
+function ajustarPorcionesDetalle(cambio) {
+    comensalesCalculadoraActual += cambio;
+    if (comensalesCalculadoraActual < 1) comensalesCalculadoraActual = 1;
+    if (comensalesCalculadoraActual > 100) comensalesCalculadoraActual = 100;
+    document.getElementById('span-comensales-actual').innerText = comensalesCalculadoraActual;
+    renderizarIngredientesDetalle();
+}
+
+function renderizarIngredientesDetalle() {
+    if (!recetaDetalleActual) return;
+    const basePorciones = parseFloat(recetaDetalleActual.porciones) || 4;
+    const factor = comensalesCalculadoraActual / basePorciones;
+
+    const listaHtml = (recetaDetalleActual.ingredientes || []).map(ing => {
+        let cantidadMostrada = ing.cantidad;
+        const numOriginal = parseFloat(ing.cantidad);
+        if (!isNaN(numOriginal)) {
+            cantidadMostrada = Math.round((numOriginal * factor) * 100) / 100;
+        }
+        return `<li class="flex gap-2"><i class="fa-solid fa-check text-blue-500 mt-1"></i><span><strong>${escaparHTML(cantidadMostrada)}</strong> — ${escaparHTML(ing.nombre)}</span></li>`;
+    }).join('');
+
+    document.getElementById('detalle-ingredientes').innerHTML = listaHtml;
+}
+
+function volverDesdeDetalle() {
+    cambiarVista(vistaOrigenDetalle);
+}
+
+function actualizarBotonFavoritoDetalle() {
+    if (!recetaDetalleActual) return;
+    const btn = document.getElementById('btn-favorito-detalle');
+    if (!btn) return;
+    btn.innerHTML = recetaDetalleActual.favorita ? '<i class="fa-solid fa-star mr-1"></i>Favorita' : '<i class="fa-regular fa-star mr-1"></i>Favorita';
+    btn.classList.toggle('text-amber-500', !!recetaDetalleActual.favorita);
+    btn.classList.toggle('border-amber-300', !!recetaDetalleActual.favorita);
+}
+
+function alternarFavorito(id) {
+    const receta = recetas.find(r => r.id == id);
+    if (!receta) return;
+    receta.favorita = !receta.favorita;
+    sincronizarStorage();
+    renderizarListado();
+    if (recetaDetalleActual && recetaDetalleActual.id == id) {
+        recetaDetalleActual = receta;
+        actualizarBotonFavoritoDetalle();
+    }
+}
+
+function alternarFavoritoDesdeDetalle() {
+    if (!recetaDetalleActual) return;
+    if (vistaOrigenDetalle === 'comunidad') {
+        alternarFavoritoComunidad(recetaDetalleActual.id);
+    } else {
+        alternarFavorito(recetaDetalleActual.id);
+    }
+}
+
+function copiarIngredientes() {
+    if (!recetaDetalleActual) return;
+    const basePorciones = parseFloat(recetaDetalleActual.porciones) || 4;
+    const factor = comensalesCalculadoraActual / basePorciones;
+
+    const texto = recetaDetalleActual.ingredientes.map(i => {
+        const num = parseFloat(i.cantidad);
+        let cant = isNaN(num) ? i.cantidad : Math.round((num * factor) * 100) / 100;
+        return `${cant} - ${i.nombre}`;
+    }).join('\n');
+
+    navigator.clipboard?.writeText(texto).then(() => {
+        mostrarModal("¡Copiado!", `Ingredientes copiados para ${comensalesCalculadoraActual} comensales.`);
+    });
+}
+
+function imprimirReceta() {
+    if (!recetaDetalleActual) return;
+    const receta = recetaDetalleActual;
+    const basePorciones = parseFloat(receta.porciones) || 4;
+    const factor = comensalesCalculadoraActual / basePorciones;
+
+    const ingredientes = receta.ingredientes.map(i => {
+        const num = parseFloat(i.cantidad);
+        let cant = isNaN(num) ? i.cantidad : Math.round((num * factor) * 100) / 100;
+        return `<li>${escaparHTML(cant)} — ${escaparHTML(i.nombre)}</li>`;
+    }).join('');
+
+    const ventana = window.open('', '_blank');
+    if (!ventana) return;
+    ventana.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>${escaparHTML(receta.titulo)}</title>
+            <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#222}h1{font-size:32px}h2{margin-top:28px}p,li{line-height:1.7}img{max-width:100%;max-height:350px;object-fit:cover;border-radius:12px}</style>
+        </head>
+        <body>
+            <h1>${escaparHTML(receta.titulo)}</h1>
+            <p>${escaparHTML(receta.subtitulo)}</p>
+            <p><strong>Comensales calculados:</strong> ${comensalesCalculadoraActual}</p>
+            ${receta.imagen ? `<img src="${escaparHTML(receta.imagen)}">` : ''}
+            <h2>Ingredientes</h2><ul>${ingredientes}</ul>
+            <h2>Pasos</h2><p style="white-space:pre-line">${escaparHTML(receta.pasos)}</p>
+            <script>window.onload=()=>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    ventana.document.close();
+}
+
+function eliminarReceta(id) {
+    const receta = recetas.find(r => r.id == id);
+    if (!receta) return;
+    confirmarAccion("Eliminar receta", `¿Estás seguro de que querés eliminar "${receta.titulo}"?`, ok => {
+        if (!ok) return;
+        recetas = recetas.filter(r => r.id != id);
+        sincronizarStorage();
+        if (recetaDetalleActual?.id == id) recetaDetalleActual = null;
+        renderizarListado();
+    });
+}
+</script>
+</body>
+</html>
